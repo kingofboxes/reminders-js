@@ -1,0 +1,16 @@
+{
+  "name": "reminders-js",
+  "version": "1.0.0",
+  "description": "Discord bot for reminders.",
+  "main": "start.js",
+  "scripts": {
+    "start": "nodemon start.js"
+  },
+  "repository": "https://github.com/kingofboxes/reminders-js",
+  "author": "kingofboxes",
+  "license": "MIT",
+  "private": false,
+  "devDependencies": {
+    "nodemon": "^2.0.6"
+  }
+}
