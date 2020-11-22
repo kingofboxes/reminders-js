@@ -1,34 +1,36 @@
 // Defines the syntax of a command using regex.
 const commandSyntax = /^\s*!([A-Za-z]+)((?: [^ ]+)+)?\s*$/;
 
-// Command Handlers
-// Test command.
-const testHandler = (command) => {
-  command.message.channel.send('Test!');
-};
+module.exports = (client, db) => {
+  // Command Handlers
+  // Test command.
+  const testHandler = async (command) => {
+    command.message.channel.send('Test!');
+    await db.testFunction();
+  };
 
-// Add reminder.
-const addReminder = (command) => {
-  command.message.channel.send('Add reminder.');
-};
+  // Add reminder.
+  const addReminder = (command) => {
+    command.message.channel.send('Add reminder.');
+    console.log(command);
+  };
 
-// Remove reminder.
-const removeReminder = (command) => {
-  command.message.channel.send('Remove reminder.');
-};
-
-module.exports = (client) => {
-  // Map commands to their respective handlers.
-  const commandHandlers = {
-    rtest: testHandler,
-    radd: addReminder,
-    rremove: removeReminder,
+  // Remove reminder.
+  const removeReminder = (command) => {
+    command.message.channel.send('Remove reminder.');
   };
 
   // Ready
   function readyHandler() {
     console.log('Connected to Discord!');
   }
+
+  // Map commands to their respective handlers.
+  const commandHandlers = {
+    rtest: testHandler,
+    radd: addReminder,
+    rremove: removeReminder,
+  };
 
   // Parse the command and return an object.
   function parseCommand(cmdMessage) {
