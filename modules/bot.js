@@ -1,5 +1,6 @@
 // Defines the syntax of a command using regex.
 const commandSyntax = /^\s*!([A-Za-z]+)((?: [^ ]+)+)?\s*$/;
+const dateSyntax = /^\s*(?:(\d+)M)?\s*(?:(\d+)d)?\s*(?:(\d+)h)?\s*(?:(\d+)m)?\s*$/;
 
 module.exports = (client, db) => {
   // Command Handlers
@@ -11,13 +12,52 @@ module.exports = (client, db) => {
 
   // Add reminder.
   const addReminder = (command) => {
-    command.message.channel.send('Add reminder.');
-    console.log(command);
+    // Usage message.
+    const usage =
+      '```Usage: !radd <time> [description]\n' +
+      'time = #M#d#h#m (e.g. 1d1h1m = 0 months, 1 day, 1 hour, 1 minute)```\n';
+
+    // Check for arguments.
+    if (command.arguments.length < 2 || !dateSyntax.test(command.arguments[0])) {
+      command.message.channel.send(usage);
+      return;
+    }
+
+    // Get input for the reminder date.
+    const time = command.arguments.shift();
+    const timeframe = time.match(dateSyntax);
+    const reminder = command.arguments.join(' ');
+
+    // Pass to DB to add.
+    db.addReminder(
+      command.message.author.id,
+      timeframe[1],
+      timeframe[2],
+      timeframe[3],
+      timeframe[4],
+      reminder
+    );
+
+    // Confirmation
+    command.message.channel.send('Reminder added.');
   };
 
   // Remove reminder.
-  const removeReminder = (command) => {
-    command.message.channel.send('Remove reminder.');
+  const removeReminder = async (command) => {
+    // Usage message.
+    const usage = '```Usage: !rremove <reminder_id>```';
+
+    // Check for arguments.
+    if (command.arguments.length != 1 || isNaN(command.arguments[0])) {
+      command.message.channel.send(usage);
+      return;
+    }
+
+    // Attempt to remove reminder from database.
+    const res = await db.removeReminder(command.message.author.id, command.arguments[0]);
+    res
+      ? command.message.channel.send('Reminder removed.')
+      : command.message.channel.send('The provided reminder id was invalid.');
   };
 
   // Ready
@@ -27,7 +67,6 @@ module.exports = (client, db) => {
 
   // Map commands to their respective handlers.
   const commandHandlers = {
-    rtest: testHandler,
     radd: addReminder,
     rremove: removeReminder,
   };

@@ -1,7 +1,7 @@
 CREATE TABLE Reminders (
 	id              serial,
-    member          integer not null,
-    start_time      integer not null,
-    end_time        integer not null,
+    member          bigint not null,
+    start_time      bigint not null,
+    end_time        bigint not null,
     description     text											
 );
