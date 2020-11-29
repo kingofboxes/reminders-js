@@ -5,3 +5,5 @@ CREATE TABLE Reminders (
     description     text,
     primary key(start_time, end_time)											
 );
+
+ALTER TABLE public.reminders OWNER to ;

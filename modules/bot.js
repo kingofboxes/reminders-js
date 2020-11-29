@@ -54,7 +54,7 @@ module.exports = (client, db) => {
   // Remove reminder.
   const removeReminder = async (command) => {
     // Usage message.
-    const usage = '```Usage: !rremove <reminder_id>```';
+    const usage = '```Usage: !rremove <reminder>```';
 
     // Check for arguments.
     if (command.arguments.length != 1 || isNaN(command.arguments[0])) {
@@ -66,7 +66,7 @@ module.exports = (client, db) => {
     const res = await db.removeReminder(command.message.author.id, command.arguments[0]);
     res
       ? command.message.channel.send('Reminder removed.')
-      : command.message.channel.send('Invalid reminder id.');
+      : command.message.channel.send('Invalid reminder number.');
   };
 
   // Get a list of reminders.
