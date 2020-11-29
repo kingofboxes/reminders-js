@@ -1,15 +1,24 @@
-// Defines the syntax of a command using regex.
+const Discord = require('discord.js');
 const commandSyntax = /^\s*!([A-Za-z]+)((?: [^ ]+)+)?\s*$/;
 const dateSyntax = /^\s*(?:(\d+)M)?\s*(?:(\d+)d)?\s*(?:(\d+)h)?\s*(?:(\d+)m)?\s*$/;
 
+// Function which is called when polling.
+const remindersPoll = async (client, db) => {
+  const res = await db.checkReminders();
+  res.forEach(async (reminder) => {
+    const date = new Date(Number(reminder.start_time));
+    const user = await client.users.fetch(reminder.member);
+    const reminderEmbed = new Discord.MessageEmbed()
+      .setColor('#FF015B')
+      .setTitle(`${reminder.description}`)
+      .setAuthor(user.username, user.avatarURL())
+      .setTimestamp(date);
+    user.send(reminderEmbed);
+  });
+};
+
 module.exports = (client, db) => {
   // Command Handlers
-  // Test command.
-  const testHandler = async (command) => {
-    command.message.channel.send('Test!');
-    await db.testFunction();
-  };
-
   // Add reminder.
   const addReminder = (command) => {
     // Usage message.
@@ -38,8 +47,8 @@ module.exports = (client, db) => {
       reminder
     );
 
-    // Confirmation
-    command.message.channel.send('Reminder added.');
+    // Confirmation message.
+    command.message.channel.send('Reminder set.');
   };
 
   // Remove reminder.
@@ -53,26 +62,99 @@ module.exports = (client, db) => {
       return;
     }
 
-    // Attempt to remove reminder from database.
+    // Confirmation message.
     const res = await db.removeReminder(command.message.author.id, command.arguments[0]);
     res
       ? command.message.channel.send('Reminder removed.')
-      : command.message.channel.send('The provided reminder id was invalid.');
+      : command.message.channel.send('Invalid reminder id.');
   };
 
-  // Ready
-  function readyHandler() {
-    console.log('Connected to Discord!');
-  }
+  // Get a list of reminders.
+  const remindersList = async (command) => {
+    // Usage message.
+    const usage = '```Usage: !rlist```';
+
+    // Check for arguments.
+    if (command.arguments.length != 0) {
+      command.message.channel.send(usage);
+      return;
+    }
+
+    // Get a list of reminders.
+    const res = await db.remindersList(command.message.author.id);
+    if (res.length === 0) {
+      command.message.channel.send('You have no reminders.');
+      return;
+    }
+
+    // Write out the reminder and set as an embed.
+    let reminders = '';
+    res.forEach((reminder, idx) => {
+      const date = new Date(Number(reminder.end_time));
+      const options = { hour12: false, timeZoneName: 'short' };
+      const time = date.toLocaleString('en-AU', options).replace(/:\d{2} /, ' ');
+      reminders += `• **[#${idx + 1}]** - ${reminder.description} ` + `(${time})\n`;
+    });
+
+    const user = await client.users.fetch(command.message.author.id);
+    const reminderEmbed = new Discord.MessageEmbed()
+      .setColor('#FF015B')
+      .setTitle('Reminders List')
+      .setDescription(reminders)
+      .setAuthor(user.username, user.avatarURL());
+
+    command.message.channel.send(reminderEmbed);
+  };
+
+  // Clears all reminders.
+  const clearReminders = async (command) => {
+    // Usage message.
+    const usage = '```Usage: !rclear```';
+
+    // Check for arguments.
+    if (command.arguments.length != 0) {
+      command.message.channel.send(usage);
+      return;
+    }
+
+    // Attempt to remove reminder from database.
+    const res = await db.clearReminders(command.message.author.id);
+    res
+      ? command.message.channel.send('All reminders cleared.')
+      : command.message.channel.send('There are no reminders to be cleared.');
+  };
+
+  // Clears all reminders.
+  const remindersHelp = async (command) => {
+    const usage =
+      '```Welcome to RemindersJS! Below is a quick summary to get started:\n\n' +
+      '- !radd <time> [description]:  Adds a reminder.\n' +
+      '- !rremove <reminder_id>:      Removes a reminder.\n' +
+      '- !rclear:                     Clears all reminders.\n' +
+      '- !rlist:                      Lists all reminders.\n' +
+      '- !rhelp:                      This help manual.```';
+    command.message.channel.send(usage);
+  };
+
+  // Polling function when bot connects to Discord.
+  const readyHandler = async () => {
+    console.log('Connected to Discord! Commencing polling for reminders.');
+    await client.user.setActivity('discord.js');
+    await client.user.setStatus('dnd');
+    client.setInterval(() => remindersPoll(client, db), 5000);
+  };
 
   // Map commands to their respective handlers.
   const commandHandlers = {
     radd: addReminder,
     rremove: removeReminder,
+    rlist: remindersList,
+    rclear: clearReminders,
+    rhelp: remindersHelp,
   };
 
   // Parse the command and return an object.
-  function parseCommand(cmdMessage) {
+  const parseCommand = (cmdMessage) => {
     // Compare against command syntax and check if command is valid.
     const matchObj = cmdMessage.content.match(commandSyntax);
     if (matchObj == null || !(matchObj[1] in commandHandlers)) {
@@ -85,16 +167,16 @@ module.exports = (client, db) => {
       command: matchObj[1],
       arguments: matchObj[2] ? matchObj[2].trim().split(' ') : [],
     };
-  }
+  };
 
   // Handles messages, ignoring messages from the bot itself.
-  function messageHandler(message) {
+  const messageHandler = (message) => {
     if (message.author.bot) return;
     const command = parseCommand(message);
     if (command != null) {
       commandHandlers[command.command](command);
     }
-  }
+  };
 
   client.once('ready', readyHandler);
   client.on('message', messageHandler);
