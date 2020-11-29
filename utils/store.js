@@ -34,7 +34,7 @@ module.exports = () => {
         await client.query('BEGIN');
         const query =
           'INSERT INTO reminders(member, start_time, end_time, description) VALUES($1, $2, $3, $4)';
-        await client.query(query, [Number(user), start, end, reminder]);
+        await client.query(query, [user, start, end, reminder]);
         await client.query('COMMIT');
       } catch (e) {
         await client.query('ROLLBACK');
