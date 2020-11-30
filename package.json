@@ -4,7 +4,7 @@
   "description": "Discord bot for reminders.",
   "main": "start.js",
   "scripts": {
-    "start": "nodemon start.js"
+    "start": "nohup node start.js >/dev/null 2>&1 &"
   },
   "repository": "https://github.com/kingofboxes/reminders-js",
   "author": "kingofboxes",
