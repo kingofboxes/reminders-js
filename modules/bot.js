@@ -95,8 +95,11 @@ module.exports = (client, db) => {
     let reminders = '';
     res.forEach((reminder, idx) => {
       const date = new Date(Number(reminder.end_time));
-      const options = { hour12: false, timeZoneName: 'short' };
-      const time = date.toLocaleString('en-AU', options).replace(/:\d{2} /, ' ');
+      const options = { timeZoneName: 'short' };
+      const time = date
+        .toLocaleString('en-AU', options)
+        .toUpperCase()
+        .replace(/:\d{2} /, ' ');
       reminders += `• **[#${idx + 1}]** - ${reminder.description} ` + `(${time})\n`;
     });
 
