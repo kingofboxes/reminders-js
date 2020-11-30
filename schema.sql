@@ -6,4 +6,4 @@ CREATE TABLE Reminders (
     primary key(start_time, end_time)											
 );
 
-ALTER TABLE public.reminders OWNER to ;
+ALTER TABLE public.reminders OWNER to USERNAME;

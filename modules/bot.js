@@ -1,4 +1,8 @@
 const Discord = require('discord.js');
+
+// Constants for maintaining bot operation.
+let poll;
+const adminUser = process.env.DISCORD_ADMINUSER;
 const commandSyntax = /^\s*!([A-Za-z]+)((?: [^ ]+)+)?\s*$/;
 const dateSyntax = /^\s*(?:(\d+)M)?\s*(?:(\d+)d)?\s*(?:(\d+)h)?\s*(?:(\d+)m)?\s*$/;
 
@@ -23,7 +27,7 @@ module.exports = (client, db) => {
   const addReminder = (command) => {
     // Usage message.
     const usage =
-      '```Usage: !radd <time> [description]\n' +
+      '```Usage: !radd <time> <description>\n' +
       'time = #M#d#h#m (e.g. 1d1h1m = 0 months, 1 day, 1 hour, 1 minute)```\n';
 
     // Check for arguments.
@@ -124,15 +128,42 @@ module.exports = (client, db) => {
       : command.message.channel.send('There are no reminders to be cleared.');
   };
 
+  // Stops the bot.
+  const stopReminders = async (command) => {
+    // Usage message.
+    const usage = '```Usage: !rstop```';
+
+    // Check for arguments.
+    if (command.arguments.length != 0) {
+      command.message.channel.send(usage);
+      return;
+    }
+
+    // Check if admin user.
+    if (command.message.author.id != adminUser) {
+      command.message.channel.send('Only the owner of this bot can use this command.');
+      return;
+    }
+
+    // Stop polling and end the client.
+    clearInterval(poll);
+    command.message.channel.send('Shutting down...');
+    setTimeout(async () => {
+      await client.destroy();
+      process.kill(process.pid, 'SIGTERM');
+    }, 500);
+  };
+
   // Clears all reminders.
   const remindersHelp = async (command) => {
     const usage =
       '```Welcome to RemindersJS! Below is a quick summary to get started:\n\n' +
-      '- !radd <time> [description]:  Adds a reminder.\n' +
-      '- !rremove <reminder_id>:      Removes a reminder.\n' +
-      '- !rclear:                     Clears all reminders.\n' +
-      '- !rlist:                      Lists all reminders.\n' +
-      '- !rhelp:                      This help manual.```';
+      '• !radd <time> <description>   -   Adds a reminder.\n' +
+      '• !rremove <reminder_id>       -   Removes a reminder.\n' +
+      '• !rclear                      -   Clears all reminders.\n' +
+      '• !rlist                       -   Lists all reminders.\n' +
+      "• !rstop                       -   Ends the bot's misery.\n" +
+      '• !rhelp                       -   This help manual.\n```';
     command.message.channel.send(usage);
   };
 
@@ -141,7 +172,7 @@ module.exports = (client, db) => {
     console.log('Connected to Discord! Commencing polling for reminders.');
     await client.user.setActivity('discord.js');
     await client.user.setStatus('dnd');
-    client.setInterval(() => remindersPoll(client, db), 5000);
+    poll = client.setInterval(() => remindersPoll(client, db), 5000);
   };
 
   // Map commands to their respective handlers.
@@ -151,6 +182,7 @@ module.exports = (client, db) => {
     rlist: remindersList,
     rclear: clearReminders,
     rhelp: remindersHelp,
+    rstop: stopReminders,
   };
 
   // Parse the command and return an object.
