@@ -2,7 +2,7 @@
 require('dotenv').config();
 const Discord = require('discord.js');
 
-// Create redis instance.
+// Create PSQL instance.
 const db = require('./utils/store')();
 
 // Create a Discord client.
