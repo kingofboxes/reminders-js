@@ -1,0 +1,20 @@
+version: "3"
+services:
+  reminders-db:
+    build: ./database
+    container_name: reminders-db
+    ports:
+      - 5432:5432
+    volumes:
+      - data:/usr/share/postgres/data
+  reminders-bot:
+    build: ./
+    container_name: reminders-js
+    command: yarn dev 
+    depends_on:
+      - reminders-db
+    volumes:
+      - data:/usr/share/reminders-bot/data
+volumes:
+    data:
+      driver: local
