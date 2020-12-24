@@ -1,0 +1,4 @@
+# Set up the files to ignore.
+.git
+.cache
+node_modules

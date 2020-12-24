@@ -7,7 +7,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-You will need Node.js, yarn, PostgresQL 12 (running latest versions, but should be compatible with older versions too).
+You will need Node.js, yarn, PostgresQL 12 (running latest versions, but should be compatible with older versions too). If you have Docker, you can run the configure-docker script to start the bot instantly.
 
 ### Installing
 
