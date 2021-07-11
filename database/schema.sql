@@ -5,3 +5,9 @@ CREATE TABLE Reminders (
     description     text,
     primary key(start_time, end_time)											
 );
+
+CREATE TABLE Subscriptions (
+    member          bigint not null,
+    ics_url         text,
+    primary key(member, ics_url)	
+);

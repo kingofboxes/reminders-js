@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+const ical = require('node-ical');
 
 // Instantiate a new client.
 const client = new Pool({
@@ -22,17 +23,30 @@ const performTransaction = async (query) => {
   }
 };
 
+// Functions for iCalendar subscription.
+const filterOutdatedEvents = (calendar) => {
+  const calendarObject = Object.values(calendar);
+  const eventArray = Array.from(calendarObject);
+  const filteredEvents = eventArray.filter((e) => e.summary && e.start.getTime() > Date.now());
+  return filteredEvents;
+};
+
+const noDuplicateReminder = async (user, event) => {
+  const startTime = event.start.getTime();
+  const description = event.summary;
+  const duplicateQuery = `SELECT * FROM Reminders WHERE member = '${user}' AND end_time = '${startTime}' AND description = '${description}'`;
+  const res = await client.query(duplicateQuery);
+  return res.rowCount === 0;
+};
+
 // Initialise with PSQL credentials.
 module.exports = () => {
-  // Connect to the PSQL DB.
   (async () => {
     await client.connect();
     console.log('Connected to PSQL server!');
   })();
 
-  // Functions returned for DB manipulation.
   return {
-    // Adds reminder to the database.
     addReminder: async (user, months, days, hours, minutes, reminder) => {
       const start = Date.now();
       let end = start;
@@ -41,27 +55,22 @@ module.exports = () => {
       if (hours) end += hours * 3600000;
       if (minutes) end += minutes * 60000;
 
-      // Perform a transaction.
       const query =
         'INSERT INTO reminders(member, start_time, end_time, description) ' +
         `VALUES(${user}, ${start}, ${end}, '${reminder}')`;
       await performTransaction(query);
     },
 
-    // Returns a list of reminders for that user.
     remindersList: async (user) => {
       const query = `SELECT * FROM Reminders WHERE member = ${user} ORDER BY end_time`;
       const res = await client.query(query);
       return res.rows;
     },
 
-    // Removes reminder from database for that user.
     removeReminder: async (user, rid) => {
       const listQuery = `SELECT * FROM Reminders WHERE member = ${user} ORDER BY end_time`;
       const list = await client.query(listQuery);
       if (list.rows.length === 0 || list.rows.length + 1 <= rid) return false;
-
-      // Perform a transaction.
       const query =
         `DELETE FROM Reminders WHERE start_time = ${list.rows[rid - 1].start_time} and ` +
         `end_time = ${list.rows[rid - 1].end_time}`;
@@ -69,14 +78,12 @@ module.exports = () => {
       return res.rowCount !== 0;
     },
 
-    // Removes all reminders from database for that user.
     clearReminders: async (user) => {
       const query = `DELETE FROM Reminders WHERE member = ${user}`;
       const res = await performTransaction(query);
       return res.rowCount !== 0;
     },
 
-    // Checks and removes reminders that should be removed.
     checkReminders: async () => {
       const remindersQuery = `SELECT * FROM Reminders WHERE end_time < ${Date.now()}`;
       const res = await client.query(remindersQuery);
@@ -85,6 +92,44 @@ module.exports = () => {
         await performTransaction(query);
       }
       return res.rows;
+    },
+
+    subscribeToCalendarForReminders: async (user, url) => {
+      const regex = new RegExp('^https?:\/\/.*.ics$');
+      if (regex.test(url)) {
+        try {
+          await ical.async.fromURL(url);
+          const query =
+            'INSERT INTO subscriptions(member, ics_url) ' + `VALUES('${user}', '${url}')`;
+          await performTransaction(query);
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+    },
+
+    checkCalendarForReminders: async () => {
+      const calendarQuery = `SELECT * FROM subscriptions`;
+      const res = await client.query(calendarQuery);
+      res.rows.forEach(async (r) => {
+        const user = r.member;
+        const url = r.ics_url;
+        try {
+          const calendar = await ical.async.fromURL(url);
+          const filteredEvents = filterOutdatedEvents(calendar);
+          await filteredEvents.forEach(async (e) => {
+            if (await noDuplicateReminder(user, e)) {
+              const query =
+                'INSERT INTO reminders(member, start_time, end_time, description) ' +
+                `VALUES(${user}, ${Date.now()}, ${e.start.getTime()}, '${e.summary}')`;
+              await performTransaction(query);
+            }
+          });
+        } catch (e) {
+          console.error(e); // don't have a logger to output error to
+        }
+      });
     },
   };
 };
